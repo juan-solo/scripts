@@ -1,0 +1,20 @@
+#!/bin/bash 
+
+n=$(date +"%m-%d-%Y")
+echo "Starting Failed-Server-Check $n ***********"
+echo " "
+export AWS_CONFIG_FILE=$HOME/.aws-config
+for i in `knife ec2 server list|grep running|awk '{print $1}'`
+do
+  echo "       Checking for Failed Instances: $i"
+  if /usr/local/bin/aws ec2 describe-instance-status --instance-ids $i |grep failed; then
+    B=`/usr/local/bin/aws ec2 describe-instance-status --instance-ids $i`
+    echo "$B \nHost $i Failed EC2 Checks - Stopping Host automagically" | mail -s "$i EC2 Check Failed" -t YOUREMAIL@MAIL.COM
+    /usr/local/bin/aws ec2 stop-instances --instance-ids $i
+    sleep 370
+    echo "Host $i Is being re-started" | mail -s "$i EC2 HOST Restart" -t zap@boxfish.com  kevin@boxfish.com
+    A=`/usr/local/bin/aws ec2 start-instances --instance-ids $i `
+    echo "$A" | mail -s "$i EC2 HOST Restarted" -t YOUREMAIL@MAIL.COM
+  fi
+done
+echo "Run Complete ***********"
